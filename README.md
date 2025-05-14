@@ -4,7 +4,7 @@
 
 This project uses environment variables for configuration. Create an `.env` file in the root directory with the following variables:
 
-```
+```env
 # API Configuration
 VITE_API_BASE_URL=http://localhost:5000/api
 VITE_API_DOMAIN=http://localhost:5000
@@ -13,14 +13,66 @@ VITE_FRONTEND_URL=http://localhost:5173
 
 For production deployment, create a `.env.production` file:
 
-```
+```env
 # API Configuration
 VITE_API_BASE_URL=https://your-backend-url.com/api
 VITE_API_DOMAIN=https://your-backend-url.com
 VITE_FRONTEND_URL=https://weddingplanning-1-joi4.onrender.com
 ```
 
-## Development
+## Backend Setup
+
+1. Navigate to the backend directory:
+
+   ```bash
+   cd back-end
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Create a `.env` file in the `back-end` directory with the following content:
+
+   ```env
+   DATABASE_URL="mysql://username:password@localhost:3306/weddingplanning"
+   JWT_SECRET="your-jwt-secret"
+   PORT=5000
+   ```
+
+4. Run database migrations:
+
+   ```bash
+   npx prisma migrate dev
+   ```
+
+5. Seed the database with sample data:
+
+   ```bash
+   npm run seed
+   ```
+
+   This will create:
+
+   - An admin user (`admin@example.com` / password123)
+   - A vendor user (`vendor@example.com` / password123)
+   - 24 services across 6 service types and 4 categories (Bronze, Silver, Gold, Platinum)
+   - Each service includes detailed descriptions, features, pricing, and timeline information
+
+6. Start the backend server:
+
+   ```bash
+   npm run server
+   ```
+
+   The server will automatically create the following directories if they don't exist:
+
+   - `uploads/` - For storing uploaded files
+   - `uploads/categories/` - For storing category images
+
+## Frontend Development
 
 ```bash
 # Install dependencies

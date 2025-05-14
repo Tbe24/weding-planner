@@ -192,6 +192,35 @@ export const clientService = {
   getServices: (params = {}) => api.get(ENDPOINTS.CLIENT.SERVICES, { params }),
 
   /**
+   * Fetches all service categories
+   * @returns {Promise} - Promise with service categories data
+   */
+  getServiceCategories: () => api.get(ENDPOINTS.CLIENT.SERVICE_CATEGORIES),
+
+  /**
+   * Fetches vendors by category name
+   * @param {string} categoryName - The name of the category
+   * @returns {Promise} - Promise with vendors data
+   */
+  getVendorsByCategory: (categoryName) => {
+    const url = ENDPOINTS.CLIENT.VENDORS_BY_CATEGORY.replace(
+      ":categoryName",
+      encodeURIComponent(categoryName)
+    );
+    return api.get(url);
+  },
+
+  /**
+   * Fetches vendor details by ID
+   * @param {string} id - The ID of the vendor
+   * @returns {Promise} - Promise with vendor data
+   */
+  getVendorById: (id) => {
+    const url = ENDPOINTS.CLIENT.VENDOR_BY_ID.replace(":id", id);
+    return api.get(url);
+  },
+
+  /**
    * Creates a new booking for a service
    * @param {Object} bookingData - Data for the new booking (serviceId, eventDate, location, etc.)
    * @returns {Promise} - Promise with created booking data
@@ -338,6 +367,25 @@ export const adminService = {
   // Feedback
   getFeedbacks: (params) => api.get("/admin/feedback", { params }),
   getFeedback: (id) => api.get(`/admin/feedback/${id}`),
+
+  // Service Categories
+  getServiceCategories: () => api.get("/admin/service-categories"),
+  getServiceCategoryById: (id) => api.get(`/admin/service-categories/${id}`),
+  createServiceCategory: (formData) => {
+    return api.post("/admin/service-categories", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+  updateServiceCategory: (id, formData) => {
+    return api.patch(`/admin/service-categories/${id}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+  deleteServiceCategory: (id) => api.delete(`/admin/service-categories/${id}`),
 };
 
 /**

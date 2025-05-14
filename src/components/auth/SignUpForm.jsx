@@ -1,5 +1,6 @@
 import React from "react";
 import useSignUpForm from "../../hooks/useSignUpForm";
+import useServiceCategories from "../../hooks/useServiceCategories";
 import Button from "../ui/Button";
 import PhoneInput from "../ui/PhoneInput";
 
@@ -12,6 +13,9 @@ const SignUpForm = () => {
     handleChange,
     handleSubmit,
   } = useSignUpForm();
+
+  // Fetch service categories from the backend
+  const { categories, loading: categoriesLoading } = useServiceCategories();
 
   return (
     <>
@@ -226,6 +230,44 @@ const SignUpForm = () => {
                 <p className="mt-1 text-sm text-red-600">
                   {errors.serviceType}
                 </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="categoryId"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Service Category
+              </label>
+              <select
+                id="categoryId"
+                name="categoryId"
+                value={formData.categoryId || ""}
+                onChange={handleChange}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-colors
+                          ${
+                            errors.categoryId
+                              ? "border-red-500 focus:ring-red-200"
+                              : "border-gray-300 focus:ring-purple-200 focus:border-purple-400"
+                          }`}
+                disabled={categoriesLoading}
+              >
+                <option value="">Select service category</option>
+                {categoriesLoading ? (
+                  <option value="" disabled>
+                    Loading categories...
+                  </option>
+                ) : (
+                  categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))
+                )}
+              </select>
+              {errors.categoryId && (
+                <p className="mt-1 text-sm text-red-600">{errors.categoryId}</p>
               )}
             </div>
 

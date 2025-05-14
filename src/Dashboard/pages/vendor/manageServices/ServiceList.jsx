@@ -16,26 +16,28 @@ import {
   MenuItem,
   CircularProgress,
   Chip,
+  Stack,
 } from "@mui/material";
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  Close as CloseIcon,
 } from "@mui/icons-material";
 import useVendorServices from "../../../../hooks/useVendorServices";
 
-const SERVICE_CATEGORIES = ["Bronze", "Silver", "Gold", "Platinum"];
+const SERVICE_CATEGORIES = ["Silver", "Gold", "Platinum"];
 
-// Helper function to get category color
-const getCategoryColor = (category) => {
-  switch (category) {
-    case "Bronze":
-      return "default";
-    case "Silver":
+// Helper function to get package type color
+const getCategoryColor = (packageType) => {
+  if (!packageType) return "default";
+
+  switch (packageType.toLowerCase()) {
+    case "silver":
       return "secondary";
-    case "Gold":
+    case "gold":
       return "warning";
-    case "Platinum":
+    case "platinum":
       return "primary";
     default:
       return "default";
@@ -57,11 +59,13 @@ const ServiceList = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState(null);
   const [editingService, setEditingService] = useState(null);
+  const [newFeature, setNewFeature] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     price: "",
-    category: "",
+    packageType: "",
+    features: [],
   });
 
   useEffect(() => {
@@ -75,7 +79,8 @@ const ServiceList = () => {
         title: service.title,
         description: service.description,
         price: service.price.toString(),
-        category: service.category,
+        packageType: service.packageType || "",
+        features: service.features || [],
       });
     } else {
       setEditingService(null);
@@ -83,7 +88,8 @@ const ServiceList = () => {
         title: "",
         description: "",
         price: "",
-        category: "",
+        packageType: "",
+        features: [],
       });
     }
     setOpen(true);
@@ -104,9 +110,16 @@ const ServiceList = () => {
 
       if (editingService) {
         await updateService(editingService.serviceId, serviceData);
+        console.log("Service updated successfully");
       } else {
         await addService(serviceData);
+        console.log("Service added successfully");
       }
+
+      // Fetch the updated list of services
+      await fetchServices();
+      console.log("Services list refreshed");
+
       handleClose();
     } catch (err) {
       console.error("Failed to save service:", err);
@@ -122,6 +135,12 @@ const ServiceList = () => {
     if (serviceToDelete) {
       try {
         await deleteService(serviceToDelete.serviceId);
+        console.log("Service deleted successfully");
+
+        // Fetch the updated list of services
+        await fetchServices();
+        console.log("Services list refreshed after deletion");
+
         setDeleteDialogOpen(false);
         setServiceToDelete(null);
       } catch (err) {
@@ -133,6 +152,71 @@ const ServiceList = () => {
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
     setServiceToDelete(null);
+  };
+
+  const handleAddFeature = () => {
+    if (newFeature.trim() !== "") {
+      const updatedFeatures = [...formData.features, newFeature.trim()];
+      console.log("Adding feature:", newFeature.trim());
+      console.log("Updated features:", updatedFeatures);
+
+      setFormData({
+        ...formData,
+        features: updatedFeatures,
+      });
+      setNewFeature("");
+
+      // If we're editing a service, update it immediately
+      if (editingService) {
+        const serviceData = {
+          ...formData,
+          features: updatedFeatures,
+          price: parseFloat(formData.price),
+        };
+        updateService(editingService.serviceId, serviceData)
+          .then(() => {
+            console.log("Service updated with new feature");
+            fetchServices(); // Refresh the list
+          })
+          .catch((err) => {
+            console.error("Failed to update service with new feature:", err);
+          });
+      }
+    }
+  };
+
+  const handleRemoveFeature = (index) => {
+    const updatedFeatures = [...formData.features];
+    const removedFeature = updatedFeatures[index];
+    updatedFeatures.splice(index, 1);
+
+    console.log("Removing feature:", removedFeature);
+    console.log("Updated features:", updatedFeatures);
+
+    setFormData({
+      ...formData,
+      features: updatedFeatures,
+    });
+
+    // If we're editing a service, update it immediately
+    if (editingService) {
+      const serviceData = {
+        ...formData,
+        features: updatedFeatures,
+        price: parseFloat(formData.price),
+      };
+      updateService(editingService.serviceId, serviceData)
+        .then(() => {
+          console.log("Service updated after removing feature");
+          fetchServices(); // Refresh the list
+        })
+        .catch((err) => {
+          console.error(
+            "Failed to update service after removing feature:",
+            err
+          );
+        });
+    }
   };
 
   if (loading && !services.length) {
@@ -192,14 +276,57 @@ const ServiceList = () => {
                     {service.title}
                   </Typography>
                   <Chip
-                    label={service.category}
-                    color={getCategoryColor(service.category)}
+                    label={service.packageType || "Standard"}
+                    color={getCategoryColor(service.packageType)}
                     size="small"
+                    sx={{ fontWeight: "bold" }}
                   />
                 </Box>
-                <Typography variant="body2" paragraph>
+                <Typography variant="body2" sx={{ mb: 2 }}>
                   {service.description}
                 </Typography>
+
+                {service.features && service.features.length > 0 && (
+                  <Box mb={2}>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                      Features:
+                    </Typography>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      flexWrap="wrap"
+                      useFlexGap
+                    >
+                      {service.features.slice(0, 3).map((feature, index) => (
+                        <Chip
+                          key={index}
+                          label={feature}
+                          size="small"
+                          variant="outlined"
+                          color={
+                            service.packageType?.toLowerCase() === "gold"
+                              ? "warning"
+                              : service.packageType?.toLowerCase() ===
+                                "platinum"
+                              ? "primary"
+                              : service.packageType?.toLowerCase() === "silver"
+                              ? "secondary"
+                              : "default"
+                          }
+                          sx={{ m: 0.5 }}
+                        />
+                      ))}
+                      {service.features.length > 3 && (
+                        <Chip
+                          label={`+${service.features.length - 3} more`}
+                          size="small"
+                          sx={{ m: 0.5 }}
+                        />
+                      )}
+                    </Stack>
+                  </Box>
+                )}
+
                 <Typography variant="h6" color="primary">
                   ETB {service.price.toLocaleString()}
                 </Typography>
@@ -267,10 +394,10 @@ const ServiceList = () => {
             <TextField
               fullWidth
               select
-              label="Category"
-              value={formData.category}
+              label="Package Type"
+              value={formData.packageType}
               onChange={(e) =>
-                setFormData({ ...formData, category: e.target.value })
+                setFormData({ ...formData, packageType: e.target.value })
               }
               margin="normal"
               required
@@ -281,6 +408,45 @@ const ServiceList = () => {
                 </MenuItem>
               ))}
             </TextField>
+
+            {/* Features Section */}
+            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+              Service Features
+            </Typography>
+            <Box sx={{ mb: 2 }}>
+              <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                <TextField
+                  fullWidth
+                  label="Add Feature"
+                  value={newFeature}
+                  onChange={(e) => setNewFeature(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddFeature();
+                    }
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  onClick={handleAddFeature}
+                  startIcon={<AddIcon />}
+                >
+                  Add
+                </Button>
+              </Stack>
+
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {formData.features.map((feature, index) => (
+                  <Chip
+                    key={index}
+                    label={feature}
+                    onDelete={() => handleRemoveFeature(index)}
+                    sx={{ m: 0.5 }}
+                  />
+                ))}
+              </Stack>
+            </Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleClose}>Cancel</Button>

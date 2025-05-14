@@ -1,98 +1,28 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import useServices from "../../hooks/useServices";
-import { toast } from "react-toastify";
+import { API_IMAGE_URL } from "../../config/env";
 
 const ServicesSection = () => {
   const { services, loading, error } = useServices(6); // Fetch up to 6 services
   const navigate = useNavigate();
-
-  const handleBookService = (serviceId, serviceTitle) => {
-    // Check if user is authenticated
-    const token =
-      localStorage.getItem("token") || sessionStorage.getItem("token");
-
-    // Get user role if logged in
-    const userRole =
-      localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
-
-    if (token && userRole === "CLIENT") {
-      // If authenticated AND a client, navigate to booking page
-      navigate(`/dashboard/booking/${serviceId}`);
-    } else if (token && userRole) {
-      // User is logged in but NOT as a client
-      toast.warning(
-        `You're logged in as a ${userRole.toLowerCase()}. Only clients can book services.`,
-        {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        }
-      );
-
-      // Ask if they want to log out and create a client account
-      const confirmLogout = window.confirm(
-        "Would you like to log out from your current account and log in as a client?"
-      );
-
-      if (confirmLogout) {
-        // Clear all auth data
-        localStorage.removeItem("token");
-        sessionStorage.removeItem("token");
-        localStorage.removeItem("user");
-        sessionStorage.removeItem("user");
-        localStorage.removeItem("userRole");
-        sessionStorage.removeItem("userRole");
-
-        // Store redirect destination
-        sessionStorage.setItem(
-          "redirectAfterLogin",
-          `/dashboard/booking/${serviceId}`
-        );
-
-        // Navigate to login
-        navigate("/login");
-      }
-    } else {
-      // Not logged in at all
-      toast.info("Please log in as a client to book this service", {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-
-      // Store the intended destination to redirect after login
-      sessionStorage.setItem(
-        "redirectAfterLogin",
-        `/dashboard/booking/${serviceId}`
-      );
-
-      navigate("/login");
-    }
-  };
 
   if (loading) {
     return (
       <section className="py-16 bg-gray-50" id="services">
         <div className="container mx-auto px-4">
           <h2 className="text-center text-3xl md:text-4xl font-semibold text-gray-800 mb-4">
-            Our Services
+            Service Categories
           </h2>
           <div className="w-16 h-1 bg-wedding-purple mx-auto mb-6"></div>
-          <div className="text-center">Loading services...</div>
+          <div className="text-center">Loading categories...</div>
         </div>
       </section>
     );
   }
 
   if (error) {
-    console.log("Using fallback services due to error");
+    console.log("Using fallback categories due to error");
   }
 
   const servicesToRender = Array.isArray(services) ? services : [];
@@ -102,12 +32,12 @@ const ServicesSection = () => {
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-center text-3xl md:text-4xl font-semibold text-gray-800 mb-4">
-            Our Services
+            Service Categories
           </h2>
           <div className="w-16 h-1 bg-wedding-purple mx-auto mb-6"></div>
           <p className="max-w-2xl mx-auto text-gray-600 ">
-            Comprehensive wedding planning services to make your special day
-            perfect in every way.
+            Browse our comprehensive wedding service categories to find
+            everything you need for your special day.
           </p>
         </div>
 
@@ -116,9 +46,9 @@ const ServicesSection = () => {
             <div
               key={service.id || index}
               className="bg-white/90 rounded-2xl overflow-hidden shadow-lg transition-all duration-300 hover:shadow-[0_12px_28px_rgba(147,51,234,0.15)] group cursor-pointer relative"
-              onClick={() => handleBookService(service.id, service.title)}
+              onClick={() => navigate(`/vendors/category/${service.title}`)}
               role="button"
-              aria-label={`Book ${service.title}`}
+              aria-label={`Browse services in ${service.title} category`}
             >
               {/* Decorative corner accent */}
               <div className="absolute top-0 right-0 w-16 h-16 rounded-2xl overflow-hidden z-0">
@@ -129,7 +59,7 @@ const ServicesSection = () => {
                 <div className="relative h-56 overflow-hidden shimmer-container">
                   <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/30 mix-blend-overlay z-10"></div>
                   <img
-                    src={service.image}
+                    src={API_IMAGE_URL + service.image}
                     alt={service.title}
                     className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                   />
@@ -140,9 +70,10 @@ const ServicesSection = () => {
                     <span>{service.category || "Premium"}</span>
                   </div>
 
-                  {/* Price badge */}
+                  {/* Services count badge */}
                   <div className="absolute bottom-4 right-4 bg-white/90 text-wedding-purple font-bold px-3 py-1 rounded-full z-10 shadow-sm">
-                    ETB {service.price?.toLocaleString()}
+                    {service.price}{" "}
+                    {service.price === 1 ? "Service" : "Services"}
                   </div>
                 </div>
               ) : (
@@ -158,9 +89,10 @@ const ServicesSection = () => {
                     <span>{service.category || "Premium"}</span>
                   </div>
 
-                  {/* Price badge */}
+                  {/* Services count badge */}
                   <div className="absolute bottom-4 right-4 bg-white/90 text-wedding-purple font-bold px-3 py-1 rounded-full z-10 shadow-sm">
-                    ETB {service.price?.toLocaleString()}
+                    {service.price}{" "}
+                    {service.price === 1 ? "Service" : "Services"}
                   </div>
                 </div>
               )}
@@ -175,40 +107,31 @@ const ServicesSection = () => {
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-500 to-pink-500 group-hover:w-full transition-all duration-500"></span>
                 </h3>
 
-                {service.vendor && (
-                  <div className="mb-2 text-sm text-gray-600">
-                    Provided by:{" "}
-                    <span className="font-medium">
-                      {service.vendor.businessName}
-                    </span>
-                    {service.vendor.rating && (
-                      <span className="ml-2">
-                        ⭐ {service.vendor.rating.toFixed(1)}
-                      </span>
-                    )}
-                  </div>
-                )}
-
                 <p className="text-gray-600 leading-relaxed line-clamp-3">
                   {service.description}
                 </p>
 
-                <div className="mt-6 inline-flex items-center relative overflow-hidden group-hover:bg-gradient-to-r group-hover:from-purple-500 group-hover:to-pink-500 px-5 py-2 rounded-full transition-all duration-300">
-                  <span className="font-medium text-sm relative z-10 text-purple-700 group-hover:text-white transition-colors duration-300">
-                    Book Now
-                  </span>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 ml-2 relative z-10 text-purple-700 group-hover:text-white transition-colors duration-300 transform transition-transform duration-300 group-hover:translate-x-1"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
+                <div className="mt-6 flex justify-center">
+                  <Link
+                    to={`/vendors/category/${service.title}`}
+                    className="inline-flex items-center px-5 py-2 rounded-full border border-purple-500 hover:bg-purple-50 transition-all duration-300"
                   >
-                    <path
-                      fillRule="evenodd"
-                      d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                    <span className="font-medium text-sm text-purple-700">
+                      Browse Services
+                    </span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 ml-2 text-purple-700 transition-all duration-300 transform group-hover:translate-x-1"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -220,7 +143,7 @@ const ServicesSection = () => {
             onClick={() => navigate("/services")}
             className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white font-medium rounded-full shadow-md hover:shadow-lg transition-all duration-300"
           >
-            View All Services
+            View All Categories
           </button>
         </div>
       </div>

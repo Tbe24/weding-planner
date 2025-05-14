@@ -31,7 +31,7 @@ export const adminResources = [
     options: { label: "Payments" },
     list: paymentList,
     show: paymentShow,
-  },
+},
   {
     name: "feedbacks",
     options: { label: "Reviews & Feedback" },

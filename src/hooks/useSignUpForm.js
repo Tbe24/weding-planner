@@ -62,6 +62,7 @@ const vendorSchema = z
       })
       .max(100, { message: "Business name must be less than 100 characters" }),
     serviceType: z.string().min(1, { message: "Please select a service type" }),
+    categoryId: z.string().min(1, { message: "Please select a category" }),
     accountNumber: z
       .string()
       .regex(/^\d{13}$/, {
@@ -105,6 +106,7 @@ export const useSignUpForm = () => {
     role: "CLIENT", // Default role
     businessName: "",
     serviceType: "",
+    categoryId: "",
     accountNumber: "",
     tinNumber: "",
   });
@@ -174,7 +176,11 @@ export const useSignUpForm = () => {
 
       // For vendor-specific fields, only validate when role is VENDOR
       if (
-        (name === "businessName" || name === "serviceType") &&
+        (name === "businessName" ||
+          name === "serviceType" ||
+          name === "categoryId" ||
+          name === "accountNumber" ||
+          name === "tinNumber") &&
         formData.role !== "VENDOR"
       ) {
         return;
@@ -210,14 +216,17 @@ export const useSignUpForm = () => {
           z.object({
             businessName: vendorSchema.shape.businessName,
             serviceType: vendorSchema.shape.serviceType,
+            categoryId: vendorSchema.shape.categoryId,
           }).parse({
             businessName: formData.businessName,
             serviceType: formData.serviceType,
+            categoryId: formData.categoryId,
           });
           setErrors((prev) => ({
             ...prev,
             businessName: undefined,
             serviceType: undefined,
+            categoryId: undefined,
           }));
         } catch (error) {
           if (error instanceof z.ZodError) {
@@ -234,6 +243,7 @@ export const useSignUpForm = () => {
           const {
             businessName,
             serviceType,
+            categoryId,
             accountNumber,
             tinNumber,
             ...rest
@@ -261,6 +271,7 @@ export const useSignUpForm = () => {
       if (userData.role === "VENDOR") {
         apiData.businessName = userData.businessName;
         apiData.serviceType = userData.serviceType;
+        apiData.categoryId = userData.categoryId;
         apiData.accountNumber = userData.accountNumber;
         apiData.tinNumber = userData.tinNumber;
       }
@@ -330,6 +341,7 @@ export const useSignUpForm = () => {
           role: "CLIENT",
           businessName: "",
           serviceType: "",
+          categoryId: "",
           accountNumber: "",
           tinNumber: "",
         });
@@ -341,13 +353,13 @@ export const useSignUpForm = () => {
             sessionStorage.setItem("userData", JSON.stringify(result.user));
             sessionStorage.setItem("userRole", result.user.role);
           }
-
-          // Redirect all users to the same dashboard
           setTimeout(() => {
-            navigate("/dashboard", {
-              state: { newRegistration: true },
+            navigate("/", {
+              state: {
+                message: "Registration successful!.",
+              },
             });
-          }, 2000);
+          }, 3000);
         } else {
           // Redirect to login if no token
           setTimeout(() => {

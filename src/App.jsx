@@ -12,7 +12,9 @@ import Login from "./pages/Login";
 import Dashboard from "./Dashboard";
 import DetailsPage from "./pages/detailsPage";
 import Vendor from "./pages/vendor";
+import VendorsByCategory from "./pages/vendorsByCategory";
 import Page404 from "./pages/404Page";
+import PaymentConfirmation from "./components/service/PaymentConfirmation";
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const userType = localStorage.getItem("user_type") || "";
@@ -51,6 +53,14 @@ function App() {
           />
           <Route path="/services/*" element={<DetailsPage />} />
           <Route path="/vendor/:id" element={<Vendor />} />
+          <Route
+            path="/vendors/category/:categoryName"
+            element={<VendorsByCategory />}
+          />
+          <Route
+            path="/payment/confirmation"
+            element={<PaymentConfirmation />}
+          />
 
           {/* Protected route example*/}
           <Route path="/dashboard/*" element={<Dashboard />} />

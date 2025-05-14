@@ -99,28 +99,7 @@ const useLogin = () => {
         localStorage.removeItem("rememberedEmail");
       }
 
-      // Check for saved redirect path
-      const savedRedirect = sessionStorage.getItem("redirectAfterLogin");
-      let redirectPath = "/dashboard";
-
-      // If attempting to access service details and user is not a client, don't redirect there
-      if (
-        savedRedirect &&
-        savedRedirect.includes("/dashboard/services") &&
-        data.user.role !== "client"
-      ) {
-        sessionStorage.removeItem("redirectAfterLogin");
-        toast.info(
-          "The requested page is only available to clients. Redirecting to dashboard."
-        );
-      }
-      // Otherwise use the saved redirect if it exists
-      else if (savedRedirect) {
-        redirectPath = savedRedirect;
-        sessionStorage.removeItem("redirectAfterLogin");
-      }
-
-      navigate(redirectPath);
+      navigate("/");
       toast.success("Login successful!");
     } catch (error) {
       console.error("Login error:", error);

@@ -19,10 +19,10 @@ const Navbar = () => {
   const userResources = [{ name: "Dashboard", url: "/dashboard" }];
 
   const AddtionalItems = {
-    admin: adminResources,
+    ADMIN: adminResources,
     "event-planner": eventPlannerResources,
-    vendor: vendorResources,
-    user: userResources,
+    VENDOR: vendorResources,
+    CLIENT: userResources,
   };
 
   const handleClick = (e, itemName) => {
@@ -35,8 +35,8 @@ const Navbar = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userRole");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("userRole");
     setIsAuthenticated(false);
     setUserRole(null);
     window.location.href = "/";
@@ -51,7 +51,7 @@ const Navbar = () => {
   ];
 
   useEffect(() => {
-    const role = localStorage.getItem("userRole");
+    const role = sessionStorage.getItem("userRole");
     if (role) {
       setIsAuthenticated(true);
       setUserRole(role);

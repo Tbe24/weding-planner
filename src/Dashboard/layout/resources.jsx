@@ -10,6 +10,7 @@ import user from "@mui/icons-material/Person";
 import feedback from "@mui/icons-material/Feedback";
 import payment from "@mui/icons-material/Payment";
 import BookOnlineIcon from "@mui/icons-material/BookOnline";
+import CategoryIcon from "@mui/icons-material/Category";
 
 // Import components from the pages folder
 import AdminDashboard from "../pages/admin/AdminDashboard";
@@ -50,6 +51,11 @@ import userEdit from "../pages/admin/user/userEdit";
 import UserList from "../pages/admin/user/userList";
 import feedbackList from "../pages/admin/feedback/feedbacklist";
 import PaymentList from "../pages/admin/payment/PaymentList";
+
+// Import Category components
+import CategoryList from "../pages/admin/Category/CategoryList";
+import CategoryCreate from "../pages/admin/Category/CategoryCreate";
+import CategoryEdit from "../pages/admin/Category/CategoryEdit";
 
 import MyBookingsList from "../pages/user/MyBookings/MyBookingsList";
 import UserPaymentList from "../pages/user/payment/PaymentList";
@@ -92,6 +98,14 @@ export const adminResources = [
     edit: VendorEdit,
     create: VendorCreate,
     show: VendorShow,
+  },
+  {
+    name: "category",
+    label: "Service Categories",
+    icon: CategoryIcon,
+    list: CategoryList,
+    create: CategoryCreate,
+    edit: CategoryEdit,
   },
   {
     name: "user",

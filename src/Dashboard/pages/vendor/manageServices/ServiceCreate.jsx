@@ -8,21 +8,27 @@ import {
   Typography,
   MenuItem,
   CircularProgress,
+  Chip,
+  Stack,
+  IconButton,
 } from "@mui/material";
+import { Add as AddIcon, Close as CloseIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import useVendorServices from "../../../../hooks/useVendorServices";
 
-const SERVICE_CATEGORIES = ["Bronze", "Silver", "Gold", "Platinum"];
+const SERVICE_CATEGORIES = ["Silver", "Gold", "Platinum"];
 
 const ServiceCreate = () => {
   const navigate = useNavigate();
   const { addService } = useVendorServices();
   const [loading, setLoading] = useState(false);
+  const [newFeature, setNewFeature] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     price: "",
-    category: "",
+    packageType: "",
+    features: [],
   });
 
   const handleSubmit = async (e) => {
@@ -42,10 +48,38 @@ const ServiceCreate = () => {
     }
   };
 
+  const handleAddFeature = () => {
+    if (newFeature.trim() !== "") {
+      const updatedFeatures = [...formData.features, newFeature.trim()];
+      console.log("Adding feature:", newFeature.trim());
+      console.log("Updated features:", updatedFeatures);
+
+      setFormData({
+        ...formData,
+        features: updatedFeatures,
+      });
+      setNewFeature("");
+    }
+  };
+
+  const handleRemoveFeature = (index) => {
+    const updatedFeatures = [...formData.features];
+    const removedFeature = updatedFeatures[index];
+    updatedFeatures.splice(index, 1);
+
+    console.log("Removing feature:", removedFeature);
+    console.log("Updated features:", updatedFeatures);
+
+    setFormData({
+      ...formData,
+      features: updatedFeatures,
+    });
+  };
+
   return (
     <Box p={3}>
       <Typography variant="h5" component="h1" gutterBottom>
-        Add New Service
+        Add New Service now
       </Typography>
       <Card>
         <CardContent>
@@ -85,10 +119,10 @@ const ServiceCreate = () => {
             <TextField
               fullWidth
               select
-              label="Category"
-              value={formData.category}
+              label="Package Type"
+              value={formData.packageType}
               onChange={(e) =>
-                setFormData({ ...formData, category: e.target.value })
+                setFormData({ ...formData, packageType: e.target.value })
               }
               margin="normal"
               required
@@ -99,6 +133,46 @@ const ServiceCreate = () => {
                 </MenuItem>
               ))}
             </TextField>
+
+            {/* Features Section */}
+            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+              Service Features
+            </Typography>
+            <Box sx={{ mb: 2 }}>
+              <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                <TextField
+                  fullWidth
+                  label="Add Feature"
+                  value={newFeature}
+                  onChange={(e) => setNewFeature(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddFeature();
+                    }
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  onClick={handleAddFeature}
+                  startIcon={<AddIcon />}
+                >
+                  Add
+                </Button>
+              </Stack>
+
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {formData.features.map((feature, index) => (
+                  <Chip
+                    key={index}
+                    label={feature}
+                    onDelete={() => handleRemoveFeature(index)}
+                    sx={{ m: 0.5 }}
+                  />
+                ))}
+              </Stack>
+            </Box>
+
             <Box mt={3} display="flex" justifyContent="flex-end" gap={2}>
               <Button
                 variant="outlined"

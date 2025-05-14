@@ -8,22 +8,28 @@ import {
   Typography,
   MenuItem,
   CircularProgress,
+  Chip,
+  Stack,
+  IconButton,
 } from "@mui/material";
+import { Add as AddIcon, Close as CloseIcon } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
 import useVendorServices from "../../../../hooks/useVendorServices";
 
-const SERVICE_CATEGORIES = ["Bronze", "Silver", "Gold", "Platinum"];
+const SERVICE_CATEGORIES = ["Silver", "Gold", "Platinum"];
 
 const ServiceEdit = () => {
   const navigate = useNavigate();
   const { serviceId } = useParams();
   const { services, updateService } = useVendorServices();
   const [loading, setLoading] = useState(false);
+  const [newFeature, setNewFeature] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     price: "",
-    category: "",
+    packageType: "",
+    features: [],
   });
 
   useEffect(() => {
@@ -33,7 +39,8 @@ const ServiceEdit = () => {
         title: service.title,
         description: service.description,
         price: service.price.toString(),
-        category: service.category,
+        packageType: service.packageType || "",
+        features: service.features || [],
       });
     }
   }, [serviceId, services]);
@@ -53,6 +60,25 @@ const ServiceEdit = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddFeature = () => {
+    if (newFeature.trim() !== "") {
+      setFormData({
+        ...formData,
+        features: [...formData.features, newFeature.trim()],
+      });
+      setNewFeature("");
+    }
+  };
+
+  const handleRemoveFeature = (index) => {
+    const updatedFeatures = [...formData.features];
+    updatedFeatures.splice(index, 1);
+    setFormData({
+      ...formData,
+      features: updatedFeatures,
+    });
   };
 
   if (!formData.title) {
@@ -111,10 +137,10 @@ const ServiceEdit = () => {
             <TextField
               fullWidth
               select
-              label="Category"
-              value={formData.category}
+              label="Package Type"
+              value={formData.packageType}
               onChange={(e) =>
-                setFormData({ ...formData, category: e.target.value })
+                setFormData({ ...formData, packageType: e.target.value })
               }
               margin="normal"
               required
@@ -125,6 +151,46 @@ const ServiceEdit = () => {
                 </MenuItem>
               ))}
             </TextField>
+
+            {/* Features Section */}
+            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+              Service Features
+            </Typography>
+            <Box sx={{ mb: 2 }}>
+              <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                <TextField
+                  fullWidth
+                  label="Add Feature"
+                  value={newFeature}
+                  onChange={(e) => setNewFeature(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddFeature();
+                    }
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  onClick={handleAddFeature}
+                  startIcon={<AddIcon />}
+                >
+                  Add
+                </Button>
+              </Stack>
+
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {formData.features.map((feature, index) => (
+                  <Chip
+                    key={index}
+                    label={feature}
+                    onDelete={() => handleRemoveFeature(index)}
+                    sx={{ m: 0.5 }}
+                  />
+                ))}
+              </Stack>
+            </Box>
+
             <Box mt={3} display="flex" justifyContent="flex-end" gap={2}>
               <Button
                 variant="outlined"
