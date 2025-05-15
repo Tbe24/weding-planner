@@ -18,7 +18,7 @@ import {
 // Configure axios instance
 const api = axios.create({
   baseURL: API_URL, // Uses base URL from config
-  timeout: 10000, // 10 second timeout
+  timeout: 100000, // 10 second timeout
   headers: {
     "Content-Type": "application/json",
   },

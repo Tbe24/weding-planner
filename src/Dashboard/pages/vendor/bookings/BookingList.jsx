@@ -68,7 +68,7 @@ const BookingList = () => {
   }, [fetchBookings, statusFilter, page, limit]);
 
   const handleViewBooking = (bookingId) => {
-    navigate(`/bookings/${bookingId}`);
+    navigate(`/dashboard/bookings/${bookingId}/show`);
   };
 
   const handleConfirmBooking = async (bookingId) => {
@@ -131,6 +131,13 @@ const BookingList = () => {
 
   const handlePageChange = (event, value) => {
     setPage(value);
+  };
+
+  // Handle limit change (items per page)
+  const handleLimitChange = (event) => {
+    const newLimit = parseInt(event.target.value, 10);
+    setLimit(newLimit);
+    setPage(1); // Reset to first page when changing limit
   };
 
   const getStatusChip = (status) => {
@@ -296,8 +303,8 @@ const BookingList = () => {
         </Table>
       </TableContainer>
 
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
+      {/* Pagination and Items Per Page */}
+      {pagination.totalPages > 0 && (
         <Stack
           direction="row"
           spacing={2}
@@ -305,12 +312,33 @@ const BookingList = () => {
           alignItems="center"
           sx={{ mt: 3 }}
         >
-          <Pagination
-            count={pagination.totalPages}
-            page={page}
-            onChange={handlePageChange}
-            color="primary"
-          />
+          <Box display="flex" alignItems="center" gap={1}>
+            <Typography variant="body2">Items per page:</Typography>
+            <TextField
+              select
+              value={limit}
+              onChange={handleLimitChange}
+              size="small"
+              sx={{ width: 80 }}
+              SelectProps={{
+                native: true,
+              }}
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </TextField>
+          </Box>
+
+          {pagination.totalPages > 1 && (
+            <Pagination
+              count={pagination.totalPages}
+              page={page}
+              onChange={handlePageChange}
+              color="primary"
+            />
+          )}
         </Stack>
       )}
 

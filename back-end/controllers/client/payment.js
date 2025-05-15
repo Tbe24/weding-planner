@@ -3,6 +3,7 @@ const prisma = require("../../prisma/client");
 const { chapa } = require("../../utils/chapa");
 const uuid = require("uuid").v4;
 const axios = require("axios"); // Add axios for API calls
+const { sendPaymentCompletionToVendor, sendNewBookingToVendor } = require("../../utils/emailService");
 
 // Initiate Payment
 const initiatePayment = asyncHandler(async (req, res) => {
@@ -219,6 +220,17 @@ const verifyPayment = asyncHandler(async (req, res) => {
       include: {
         booking: {
           include: {
+            client: {
+              include: {
+                user: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                  },
+                },
+              },
+            },
             service: {
               select: {
                 name: true,
@@ -227,6 +239,13 @@ const verifyPayment = asyncHandler(async (req, res) => {
                   select: {
                     businessName: true,
                     id: true,
+                    user: {
+                      select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                      },
+                    },
                   },
                 },
               },
@@ -235,6 +254,29 @@ const verifyPayment = asyncHandler(async (req, res) => {
         },
       },
     });
+
+    // Send email notifications if payment is completed
+    if (paymentStatus === "COMPLETED" && updatedPayment.booking) {
+      try {
+        // Send payment completion email to vendor
+        await sendPaymentCompletionToVendor(
+          updatedPayment,
+          updatedPayment.booking,
+          updatedPayment.booking.service.vendor
+        );
+
+        // Send new booking notification to vendor
+        await sendNewBookingToVendor(
+          updatedPayment.booking,
+          updatedPayment.booking.service.vendor
+        );
+
+        console.log(`Payment notification emails sent for payment ID: ${payment.id}`);
+      } catch (emailError) {
+        console.error('Error sending payment notification emails:', emailError);
+        // Continue with the response even if email fails
+      }
+    }
 
     res.status(200).json({
       message: "Payment verified",
@@ -332,7 +374,42 @@ const handleWebhook = asyncHandler(async (req, res) => {
         status: paymentStatus,
         updatedAt: new Date(),
       },
-      include: { booking: true },
+      include: {
+        booking: {
+          include: {
+            client: {
+              include: {
+                user: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+            service: {
+              select: {
+                name: true,
+                price: true,
+                vendor: {
+                  select: {
+                    businessName: true,
+                    id: true,
+                    user: {
+                      select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        }
+      },
     });
 
     // Update booking status if payment is completed
@@ -344,6 +421,27 @@ const handleWebhook = asyncHandler(async (req, res) => {
         where: { id: updatedPayment.booking.id },
         data: { status: "CONFIRMED" },
       });
+
+      // Send email notifications if payment is completed
+      try {
+        // Send payment completion email to vendor
+        await sendPaymentCompletionToVendor(
+          updatedPayment,
+          updatedPayment.booking,
+          updatedPayment.booking.service.vendor
+        );
+
+        // Send new booking notification to vendor
+        await sendNewBookingToVendor(
+          updatedPayment.booking,
+          updatedPayment.booking.service.vendor
+        );
+
+        console.log(`Payment notification emails sent for payment ID: ${payment.id} via webhook`);
+      } catch (emailError) {
+        console.error('Error sending payment notification emails from webhook:', emailError);
+        // Continue with the response even if email fails
+      }
     }
 
     // Log successful webhook processing

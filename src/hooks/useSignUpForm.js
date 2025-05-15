@@ -61,7 +61,6 @@ const vendorSchema = z
           "Business name must be at least 3 characters (Chapa payment requirement)",
       })
       .max(100, { message: "Business name must be less than 100 characters" }),
-    serviceType: z.string().min(1, { message: "Please select a service type" }),
     categoryId: z.string().min(1, { message: "Please select a category" }),
     accountNumber: z
       .string()
@@ -105,7 +104,6 @@ export const useSignUpForm = () => {
     confirmPassword: "",
     role: "CLIENT", // Default role
     businessName: "",
-    serviceType: "",
     categoryId: "",
     accountNumber: "",
     tinNumber: "",
@@ -177,7 +175,6 @@ export const useSignUpForm = () => {
       // For vendor-specific fields, only validate when role is VENDOR
       if (
         (name === "businessName" ||
-          name === "serviceType" ||
           name === "categoryId" ||
           name === "accountNumber" ||
           name === "tinNumber") &&
@@ -215,17 +212,14 @@ export const useSignUpForm = () => {
         try {
           z.object({
             businessName: vendorSchema.shape.businessName,
-            serviceType: vendorSchema.shape.serviceType,
             categoryId: vendorSchema.shape.categoryId,
           }).parse({
             businessName: formData.businessName,
-            serviceType: formData.serviceType,
             categoryId: formData.categoryId,
           });
           setErrors((prev) => ({
             ...prev,
             businessName: undefined,
-            serviceType: undefined,
             categoryId: undefined,
           }));
         } catch (error) {
@@ -241,11 +235,10 @@ export const useSignUpForm = () => {
         // Clear vendor-specific errors when switching to CLIENT
         setErrors((prev) => {
           const {
-            businessName,
-            serviceType,
-            categoryId,
-            accountNumber,
-            tinNumber,
+            businessName: _businessName,
+            categoryId: _categoryId,
+            accountNumber: _accountNumber,
+            tinNumber: _tinNumber,
             ...rest
           } = prev;
           return rest;
@@ -270,10 +263,11 @@ export const useSignUpForm = () => {
       // Add vendor-specific fields if role is VENDOR
       if (userData.role === "VENDOR") {
         apiData.businessName = userData.businessName;
-        apiData.serviceType = userData.serviceType;
         apiData.categoryId = userData.categoryId;
         apiData.accountNumber = userData.accountNumber;
         apiData.tinNumber = userData.tinNumber;
+        // Add a default value for serviceType to satisfy backend requirements
+        apiData.serviceType = "Other"; // Default to "Other" since we removed the field
       }
 
       console.log(
@@ -340,7 +334,6 @@ export const useSignUpForm = () => {
           confirmPassword: "",
           role: "CLIENT",
           businessName: "",
-          serviceType: "",
           categoryId: "",
           accountNumber: "",
           tinNumber: "",

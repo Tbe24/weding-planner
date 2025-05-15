@@ -25,6 +25,8 @@ const useVendorPayments = () => {
           pendingPayments: response.data.data.pendingPayments || [],
           totalPayments: response.data.data.totalPayments || 0,
           vendorId: response.data.data.vendorId,
+          paymentMethod : response.data.paymentMethod,
+          createdAt : response.data.createdAt
         });
       } else {
         throw new Error(

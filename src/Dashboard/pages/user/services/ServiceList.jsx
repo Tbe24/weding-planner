@@ -44,9 +44,26 @@ import useClientServices from "../../../../hooks/useClientServices";
 
 // Category chip component
 const CategoryChip = ({ category }) => {
+  // Handle undefined or null category
+  if (!category) {
+    return (
+      <Chip
+        label="Other"
+        style={{
+          backgroundColor: "#4caf50",
+          color: "#fff",
+        }}
+        size="small"
+      />
+    );
+  }
+
   // Get appropriate color for the category
-  const getCategoryColor = (category) => {
-    switch (category.toLowerCase()) {
+  const getCategoryColor = (categoryText) => {
+    // Ensure category is a string before calling toLowerCase
+    const categoryLower = String(categoryText).toLowerCase();
+
+    switch (categoryLower) {
       case "platinum":
         return "#1a237e"; // Dark blue
       case "gold":
@@ -65,7 +82,9 @@ const CategoryChip = ({ category }) => {
 
   // Format category text for display
   const formatCategory = (text) => {
-    return text.charAt(0).toUpperCase() + text.slice(1);
+    // Ensure text is a string
+    const textStr = String(text);
+    return textStr.charAt(0).toUpperCase() + textStr.slice(1);
   };
 
   return (
@@ -82,6 +101,19 @@ const CategoryChip = ({ category }) => {
 
 // Service Card Component
 const ServiceCard = ({ service, onBook }) => {
+  // Handle missing data safely
+  const safeService = {
+    name: service?.name || "Unnamed Service",
+    category: service?.category || "Other",
+    description: service?.description || "No description available",
+    price: service?.price || 0,
+    vendor: {
+      businessName: service?.vendor?.businessName || "Unknown Vendor",
+      rating: service?.vendor?.rating || 0,
+    },
+    ...service // Keep all original properties
+  };
+
   return (
     <Card
       sx={{
@@ -111,9 +143,9 @@ const ServiceCard = ({ service, onBook }) => {
           alignItems="flex-start"
         >
           <Typography variant="h6" component="h2" gutterBottom>
-            {service.name}
+            {safeService.name}
           </Typography>
-          <CategoryChip category={service.category} />
+          <CategoryChip category={safeService.category} />
         </Box>
         <Typography
           variant="body2"
@@ -121,21 +153,21 @@ const ServiceCard = ({ service, onBook }) => {
           paragraph
           sx={{ mb: 2 }}
         >
-          {service.description}
+          {safeService.description}
         </Typography>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Typography variant="h6" color="primary.main" fontWeight="bold">
-            ETB {service.price.toLocaleString()}
+            ETB {safeService.price.toLocaleString()}
           </Typography>
           <Box display="flex" alignItems="center">
-            <Rating value={service.vendor.rating} readOnly size="small" />
+            <Rating value={safeService.vendor.rating} readOnly size="small" />
             <Typography variant="body2" color="text.secondary" ml={0.5}>
-              ({service.vendor.rating})
+              ({safeService.vendor.rating})
             </Typography>
           </Box>
         </Box>
         <Typography variant="body2" color="text.secondary" mt={1}>
-          By {service.vendor.businessName}
+          By {safeService.vendor.businessName}
         </Typography>
       </CardContent>
       <CardActions>
@@ -143,7 +175,7 @@ const ServiceCard = ({ service, onBook }) => {
           variant="contained"
           fullWidth
           color="primary"
-          onClick={() => onBook(service)}
+          onClick={() => onBook(safeService)}
           startIcon={<EventIcon />}
         >
           Book Service
@@ -353,6 +385,7 @@ const ServiceList = () => {
     try {
       // Create the booking using the API
       const response = await clientService.createBooking(bookingData);
+      console.log("Booking response:", response);
 
       // Show success message
       toast.success("Service booked successfully!");
@@ -361,12 +394,30 @@ const ServiceList = () => {
       // Get booking data from response
       const booking = response.data.booking;
 
+      if (!booking || !booking.id) {
+        throw new Error("Invalid booking response from server");
+      }
+
+      if (!booking.service || !booking.vendor) {
+        console.warn("Booking response missing service or vendor data:", booking);
+        // Try to supplement with selected service data
+        booking.service = booking.service || {
+          id: selectedService.id,
+          price: selectedService.price,
+          name: selectedService.name
+        };
+        booking.vendor = booking.vendor || {
+          id: selectedService.vendor.id,
+          businessName: selectedService.vendor.businessName
+        };
+      }
+
       // Initiate payment after successful booking
       await initiatePaymentForBooking(booking);
     } catch (error) {
       console.error("Error creating booking:", error);
       toast.error(
-        error.response?.data?.message ||
+        error.response?.data?.message || error.message ||
           "Failed to book service. Please try again."
       );
       setBookingLoading(false);
@@ -377,18 +428,47 @@ const ServiceList = () => {
   const initiatePaymentForBooking = async (booking) => {
     setPaymentLoading(true);
     try {
-      // Prepare payment data
+      console.log("Booking data for payment:", booking);
+
+      // Get the current user ID from storage
+      const userData = localStorage.getItem('user') || sessionStorage.getItem('user');
+      let userId = null;
+
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          userId = user.id;
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
+      }
+
+      if (!userId) {
+        throw new Error('User ID not found. Please log in again.');
+      }
+
+      // Prepare payment data with all required fields
       const paymentData = {
-        amount: booking.amount || selectedService.price,
-        vendorId: booking.vendorId || selectedService.vendor.id,
+        amount: booking.service.price,
+        vendorId: booking.vendor.id,
         bookingId: booking.id,
+        userId: userId,
+        currency: 'ETB',
+        returnUrl: `${window.location.origin}/dashboard/my-bookings`
       };
+
+      console.log("Payment data being sent:", paymentData);
 
       // Call payment initiation API
       const paymentResponse = await clientService.initiatePayment(paymentData);
+      console.log("Payment response:", paymentResponse);
 
       // Get checkout URL from response
       const { checkoutUrl } = paymentResponse.data;
+
+      if (!checkoutUrl) {
+        throw new Error("No checkout URL returned from payment service");
+      }
 
       // Show payment notification
       toast.info("Redirecting to payment page...");
@@ -397,7 +477,7 @@ const ServiceList = () => {
       window.location.href = checkoutUrl;
     } catch (error) {
       console.error("Error initiating payment:", error);
-      toast.error("Failed to process payment. Redirecting to bookings page.");
+      toast.error(error.message || "Failed to process payment. Redirecting to bookings page.");
 
       // Redirect to bookings page if payment initiation fails
       setTimeout(() => {

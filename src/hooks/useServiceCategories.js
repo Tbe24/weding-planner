@@ -2,10 +2,6 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_URL } from "../config/api.config";
 
-/**
- * Hook to fetch service categories from the backend
- * @returns {Object} - Object containing categories, loading state, and error
- */
 const useServiceCategories = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,8 +21,7 @@ const useServiceCategories = () => {
           Array.isArray(response.data.data)
         ) {
           setCategories(response.data.data);
-        } else {
-        }
+        } 
       } catch (err) {
         console.error("Error fetching service categories:", err);
         setError("Failed to load service categories");

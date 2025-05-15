@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const prisma = require("../../prisma/client");
 const { createVendorSubaccount } = require("../../utils/chapa");
+const { sendVendorApprovalEmail } = require("../../utils/emailService");
 
 // Approve Vendor
 const approveVendor = asyncHandler(async (req, res) => {
@@ -38,6 +39,15 @@ const approveVendor = asyncHandler(async (req, res) => {
       user: { select: { email: true, firstName: true, lastName: true } },
     },
   });
+
+  // Send approval email notification
+  try {
+    await sendVendorApprovalEmail(updatedVendor);
+    console.log(`Approval email sent to ${updatedVendor.user.email}`);
+  } catch (emailError) {
+    console.error('Error sending vendor approval email:', emailError);
+    // Continue with the response even if email fails
+  }
 
   res.status(200).json({
     message: "Vendor approved successfully",

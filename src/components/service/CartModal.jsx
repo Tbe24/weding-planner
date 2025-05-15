@@ -1,154 +1,112 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
 import { useCartContext } from "./CartContext";
-import { toast } from "react-toastify";
-import { clientService } from "../../services/api";
+import useBooking from "../../hooks/useBooking";
+import { useNavigate } from "react-router-dom";
 
 const CartModal = ({ isOpen, onClose }) => {
   const { cartItems, cartTotal, removeFromCart, clearCart } = useCartContext();
+  const { processCartCheckout, loading: isProcessing, error } = useBooking();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
-  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Check if user is authenticated
+  useEffect(() => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    setIsAuthenticated(!!token);
+  }, []);
+
+  // Form state
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [bookingDetails, setBookingDetails] = useState({
+    eventDate: "",
+    location: "",
+    attendees: "",
+    specialRequests: "",
+  });
+  const [formErrors, setFormErrors] = useState({});
 
   if (!isOpen) return null;
 
-  // Check if user is logged in
-  const isLoggedIn = () => {
-    // Check for token in both localStorage and sessionStorage
-    const token =
-      localStorage.getItem("token") || sessionStorage.getItem("token");
-    // Check for user role to ensure we have a valid client user
-    const userRole =
-      localStorage.getItem("userRole") || sessionStorage.getItem("userRole");
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setBookingDetails((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
 
-    console.log("Auth check - Token:", !!token, "Role:", userRole);
-
-    return !!token;
-  };
-
-  // Create a booking for a cart item
-  const createBooking = async (cartItem) => {
-    try {
-      console.log("Creating booking for cart item:", cartItem);
-
-      // Create booking data object
-      const bookingData = {
-        serviceId: cartItem.id,
-        eventDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Default to 1 week from now
-        location: "To be confirmed", // Default location
-        attendees: 50, // Default attendees
-        specialRequests: cartItem.description || "",
-      };
-
-      console.log("Booking data:", bookingData);
-
-      // Create the booking using the API
-      const response = await clientService.createBooking(bookingData);
-      console.log("Booking created:", response.data.booking);
-      return response.data.booking;
-    } catch (error) {
-      console.error("Error creating booking:", error);
-      toast.error(
-        `Failed to create booking: ${
-          error.response?.data?.message || error.message
-        }`
-      );
-      throw error;
+    // Clear error for this field when user types
+    if (formErrors[name]) {
+      setFormErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
     }
   };
 
-  // Initiate payment for a booking
-  const initiatePayment = async (booking) => {
-    try {
-      console.log("Initiating payment for booking:", booking);
+  const validateForm = () => {
+    const errors = {};
 
-      // Prepare payment data
-      const paymentData = {
-        amount: booking.service.price,
-        vendorId: booking.service.vendor.id,
-        bookingId: booking.id,
-      };
-
-      console.log("Payment data:", paymentData);
-
-      // Call payment initiation API
-      const paymentResponse = await clientService.initiatePayment(paymentData);
-      console.log("Payment initiated:", paymentResponse.data);
-      return paymentResponse.data;
-    } catch (error) {
-      console.error("Error initiating payment:", error);
-      toast.error(
-        `Failed to initiate payment: ${
-          error.response?.data?.message || error.message
-        }`
-      );
-      throw error;
-    }
-  };
-
-  const handleContinueShopping = () => {
-    onClose();
-    navigate("/");
-  };
-
-  const handleCheckout = async () => {
-    console.log("Checkout button clicked, checking login status...");
-    const loggedIn = isLoggedIn();
-    console.log("User logged in:", loggedIn);
-
-    if (loggedIn) {
-      // If user is logged in, create bookings and initiate payment
-      setIsProcessing(true);
-      try {
-        console.log("Processing cart items:", cartItems);
-
-        // Create bookings for all cart items
-        const bookingPromises = await cartItems.map(createBooking);
-        const bookings = await Promise.all(bookingPromises);
-        console.log("All bookings created:", bookings);
-
-        if (bookings.length === 0) {
-          throw new Error("No bookings were created");
-        }
-
-        // Initiate payment for the first booking
-        // (In a real app, you might want to handle multiple bookings differently)
-        const paymentData = await initiatePayment(bookings[0]);
-        console.log("Payment data received:", paymentData);
-
-        if (!paymentData || !paymentData.checkoutUrl) {
-          throw new Error("Invalid payment data received");
-        }
-
-        // Clear the cart
-        clearCart();
-
-        // Close the modal
-        onClose();
-
-        // Show success message
-        toast.info("Redirecting to payment page...");
-
-        // Store payment info in sessionStorage for the confirmation page
-        sessionStorage.setItem("payment_tx_ref", paymentData.tx_ref);
-        sessionStorage.setItem("payment_id", paymentData.paymentId);
-
-        console.log("Redirecting to:", paymentData.checkoutUrl);
-
-        // Redirect to Chapa checkout page
-        window.location.href = paymentData.checkoutUrl;
-      } catch (error) {
-        console.error("Error processing checkout:", error);
-        toast.error(
-          `Checkout failed: ${error.response?.data?.message || error.message}`
-        );
-        setIsProcessing(false);
-      }
+    if (!bookingDetails.eventDate) {
+      errors.eventDate = "Event date is required";
     } else {
-      // If user is not logged in, navigate to login page
-      console.log("User not logged in, redirecting to login page");
-      toast.info("Please log in to complete your purchase");
-      navigate("/login");
-      onClose();
+      const selectedDate = new Date(bookingDetails.eventDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (selectedDate < today) {
+        errors.eventDate = "Event date must be in the future";
+      }
+    }
+
+    if (!bookingDetails.location) {
+      errors.location = "Location is required";
+    }
+
+    if (bookingDetails.attendees && isNaN(Number(bookingDetails.attendees))) {
+      errors.attendees = "Attendees must be a number";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleProceedToCheckout = () => {
+    if (!isAuthenticated) {
+      // Redirect to login if not authenticated
+      navigate("/login?redirect=cart");
+      return;
+    }
+
+    setShowBookingForm(true);
+  };
+
+  const handleSubmitBooking = async (e) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      const result = await processCartCheckout(cartItems, bookingDetails);
+
+      console.log('Checkout result:', result);
+
+      // If payment URL is available, redirect to payment
+      if (result.payment && result.payment.checkoutUrl) {
+        // Clear cart before redirecting to payment
+        clearCart();
+        window.location.href = result.payment.checkoutUrl;
+      } else if (result.booking && result.booking.id) {
+        // Otherwise redirect to booking confirmation
+        clearCart();
+        navigate(`/booking-confirmation/${result.booking.id}`);
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (err) {
+      console.error("Checkout failed:", err);
+      // Error is handled by the hook and displayed in the UI
     }
   };
 
@@ -176,49 +134,167 @@ const CartModal = ({ isOpen, onClose }) => {
                   className="text-lg leading-6 font-medium text-gray-900"
                   id="modal-title"
                 >
-                  Your Cart
+                  {showBookingForm ? "Booking Details" : "Your Cart"}
                 </h3>
 
-                {cartItems.length === 0 ? (
-                  <div className="mt-4 text-gray-500">Your cart is empty.</div>
-                ) : (
+                {error && (
+                  <div className="mt-2 p-2 bg-red-100 text-red-700 rounded">
+                    {error}
+                  </div>
+                )}
+
+                {!showBookingForm && (
                   <>
-                    <div className="mt-4 space-y-4">
-                      {cartItems.map((item) => (
-                        <div
-                          key={`${item.type}-${item.id}`}
-                          className="flex justify-between items-center border-b pb-3"
-                        >
-                          <div>
-                            <h4 className="font-medium">{item.name}</h4>
-                            <p className="text-sm text-gray-500">
-                              {item.vendorName}
-                            </p>
-                            <p className="text-wedding-purple font-medium">
-                              ${item.price.toLocaleString()}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => removeFromCart(item.id, item.type)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <svg
-                              className="w-5 h-5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                              xmlns="http://www.w3.org/2000/svg"
+                    {cartItems.length === 0 ? (
+                      <div className="mt-4 text-gray-500">Your cart is empty.</div>
+                    ) : (
+                      <>
+                        <div className="mt-4 space-y-4">
+                          {cartItems.map((item) => (
+                            <div
+                              key={`${item.type}-${item.id}`}
+                              className="flex justify-between items-center border-b pb-3"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              ></path>
-                            </svg>
-                          </button>
+                              <div>
+                                <h4 className="font-medium">{item.name}</h4>
+                                <p className="text-sm text-gray-500">
+                                  {item.vendorName}
+                                </p>
+                                <p className="text-wedding-purple font-medium">
+                                  ${item.price.toLocaleString()}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => removeFromCart(item.id, item.type)}
+                                className="text-red-500 hover:text-red-700"
+                                disabled={isProcessing}
+                              >
+                                <svg
+                                  className="w-5 h-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  ></path>
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+
+                        <div className="mt-6 border-t pt-4">
+                          <div className="flex justify-between font-medium">
+                            <span>Total:</span>
+                            <span>${cartTotal.toLocaleString()}</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-6">
+                          <h4 className="font-medium mb-2">Payment Option:</h4>
+                          <div className="border rounded p-3 flex items-center justify-center">
+                            <div className="flex flex-col items-center">
+                              <img
+                                src="/chapa-logo.png"
+                                alt="Chapa Payment"
+                                className="h-10 object-contain"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src =
+                                    "https://chapa.co/assets/images/chapa_logo.svg";
+                                }}
+                              />
+                              <span className="text-sm font-medium mt-1">
+                                Pay with Chapa
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {showBookingForm && (
+                  <form onSubmit={handleSubmitBooking} className="mt-4">
+                    <div className="space-y-4">
+                      <div>
+                        <label htmlFor="eventDate" className="block text-sm font-medium text-gray-700">
+                          Event Date *
+                        </label>
+                        <input
+                          type="date"
+                          id="eventDate"
+                          name="eventDate"
+                          value={bookingDetails.eventDate}
+                          onChange={handleInputChange}
+                          className={`mt-1 block w-full border ${
+                            formErrors.eventDate ? 'border-red-500' : 'border-gray-300'
+                          } rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-wedding-purple focus:border-wedding-purple`}
+                          required
+                        />
+                        {formErrors.eventDate && (
+                          <p className="mt-1 text-sm text-red-600">{formErrors.eventDate}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+                          Location *
+                        </label>
+                        <input
+                          type="text"
+                          id="location"
+                          name="location"
+                          value={bookingDetails.location}
+                          onChange={handleInputChange}
+                          className={`mt-1 block w-full border ${
+                            formErrors.location ? 'border-red-500' : 'border-gray-300'
+                          } rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-wedding-purple focus:border-wedding-purple`}
+                          required
+                        />
+                        {formErrors.location && (
+                          <p className="mt-1 text-sm text-red-600">{formErrors.location}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="attendees" className="block text-sm font-medium text-gray-700">
+                          Number of Attendees
+                        </label>
+                        <input
+                          type="number"
+                          id="attendees"
+                          name="attendees"
+                          value={bookingDetails.attendees}
+                          onChange={handleInputChange}
+                          className={`mt-1 block w-full border ${
+                            formErrors.attendees ? 'border-red-500' : 'border-gray-300'
+                          } rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-wedding-purple focus:border-wedding-purple`}
+                        />
+                        {formErrors.attendees && (
+                          <p className="mt-1 text-sm text-red-600">{formErrors.attendees}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="specialRequests" className="block text-sm font-medium text-gray-700">
+                          Special Requests
+                        </label>
+                        <textarea
+                          id="specialRequests"
+                          name="specialRequests"
+                          value={bookingDetails.specialRequests}
+                          onChange={handleInputChange}
+                          rows="3"
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-wedding-purple focus:border-wedding-purple"
+                        ></textarea>
+                      </div>
                     </div>
 
                     <div className="mt-6 border-t pt-4">
@@ -227,81 +303,72 @@ const CartModal = ({ isOpen, onClose }) => {
                         <span>${cartTotal.toLocaleString()}</span>
                       </div>
                     </div>
-
-                    <div className="mt-6">
-                      <h4 className="font-medium mb-2">Payment Option:</h4>
-                      <div className="border rounded p-3 flex items-center justify-center">
-                        <div className="flex flex-col items-center">
-                          <img
-                            src="/chapa-logo.png"
-                            alt="Chapa Payment"
-                            className="h-10 object-contain"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src =
-                                "https://chapa.co/assets/images/chapa_logo.svg";
-                            }}
-                          />
-                          <span className="text-sm font-medium mt-1">
-                            Pay with Chapa
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </>
+                  </form>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="bg-gray-50 px-4 py-3 sm:px-6  sm:flex sm:flex-row-reverse">
-            <button
-              type="button"
-              className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-wedding-purple text-base font-medium hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wedding-purple sm:ml-3 sm:w-auto sm:text-sm ${
-                cartItems.length === 0 || isProcessing
-                  ? "opacity-50 cursor-not-allowed"
-                  : ""
-              }`}
-              onClick={handleCheckout}
-              disabled={cartItems.length === 0 || isProcessing}
-            >
-              {isProcessing ? (
-                <>
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Processing...
-                </>
-              ) : isLoggedIn() ? (
-                "Pay Now"
-              ) : (
-                "Proceed to Checkout"
-              )}
-            </button>
+          <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            {!showBookingForm ? (
+              <button
+                type="button"
+                className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-wedding-purple text-base font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wedding-purple sm:ml-3 sm:w-auto sm:text-sm ${
+                  cartItems.length === 0 || isProcessing
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
+                onClick={handleProceedToCheckout}
+                disabled={cartItems.length === 0 || isProcessing}
+              >
+                Proceed to Checkout
+              </button>
+            ) : (
+              <button
+                type="submit"
+                className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-wedding-purple text-base font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wedding-purple sm:ml-3 sm:w-auto sm:text-sm ${
+                  isProcessing ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                onClick={handleSubmitBooking}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Processing...
+                  </>
+                ) : (
+                  "Complete Booking"
+                )}
+              </button>
+            )}
+
             <button
               type="button"
               className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-wedding-purple sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-              onClick={handleContinueShopping}
+              onClick={showBookingForm ? () => setShowBookingForm(false) : onClose}
               disabled={isProcessing}
             >
-              Continue Shopping
+              {showBookingForm ? "Back to Cart" : "Continue Shopping"}
             </button>
           </div>
         </div>

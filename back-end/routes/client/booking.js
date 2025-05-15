@@ -7,7 +7,7 @@ const {
 const { checkRole } = require("../../middleware/authMiddleware");
 
 // Middleware to ensure only CLIENT can access these routes
-router.use(checkRole("CLIENT"));
+router.use(checkRole(["CLIENT"]));
 
 // Book Event
 router.post("/", bookEvent);

@@ -1,5 +1,10 @@
 const asyncHandler = require("express-async-handler");
 const prisma = require("../../prisma/client");
+const {
+  sendBookingConfirmationToClient,
+  sendBookingCancellationToClient,
+  sendBookingCompletionToClient
+} = require("../../utils/emailService");
 
 // Get vendor bookings (filtered by status if provided)
 const getVendorBookings = asyncHandler(async (req, res) => {
@@ -206,11 +211,12 @@ const confirmBooking = asyncHandler(async (req, res) => {
     data: { status: "CONFIRMED" },
     include: {
       client: {
-        select: {
+        include: {
           user: {
             select: {
               email: true,
               firstName: true,
+              lastName: true,
               userId: true,
             },
           },
@@ -219,13 +225,21 @@ const confirmBooking = asyncHandler(async (req, res) => {
       service: {
         select: {
           name: true,
+          price: true,
+          description: true,
         },
       },
     },
   });
 
-  // Here you would typically send an email notification to the client
-  // This would be integrated with your notification system
+  // Send email notification to the client
+  try {
+    await sendBookingConfirmationToClient(updatedBooking, updatedBooking.client);
+    console.log(`Booking confirmation email sent to ${updatedBooking.client.user.email}`);
+  } catch (emailError) {
+    console.error('Error sending booking confirmation email:', emailError);
+    // Continue with the response even if email fails
+  }
 
   res.status(200).json({
     message: "Booking confirmed successfully",
@@ -285,11 +299,12 @@ const cancelBooking = asyncHandler(async (req, res) => {
     },
     include: {
       client: {
-        select: {
+        include: {
           user: {
             select: {
               email: true,
               firstName: true,
+              lastName: true,
             },
           },
         },
@@ -297,13 +312,25 @@ const cancelBooking = asyncHandler(async (req, res) => {
       service: {
         select: {
           name: true,
+          price: true,
+          description: true,
         },
       },
     },
   });
 
-  // Here you would typically send an email notification to the client
-  // This would be integrated with your notification system
+  // Send email notification to the client
+  try {
+    await sendBookingCancellationToClient(
+      updatedBooking,
+      updatedBooking.client,
+      cancellationReason
+    );
+    console.log(`Booking cancellation email sent to ${updatedBooking.client.user.email}`);
+  } catch (emailError) {
+    console.error('Error sending booking cancellation email:', emailError);
+    // Continue with the response even if email fails
+  }
 
   res.status(200).json({
     message: "Booking cancelled successfully",
@@ -357,11 +384,12 @@ const completeBooking = asyncHandler(async (req, res) => {
     data: { status: "COMPLETED" },
     include: {
       client: {
-        select: {
+        include: {
           user: {
             select: {
               email: true,
               firstName: true,
+              lastName: true,
             },
           },
         },
@@ -369,13 +397,21 @@ const completeBooking = asyncHandler(async (req, res) => {
       service: {
         select: {
           name: true,
+          price: true,
+          description: true,
         },
       },
     },
   });
 
-  // Here you would typically send an email notification to the client
-  // This would be integrated with your notification system
+  // Send email notification to the client
+  try {
+    await sendBookingCompletionToClient(updatedBooking, updatedBooking.client);
+    console.log(`Booking completion email sent to ${updatedBooking.client.user.email}`);
+  } catch (emailError) {
+    console.error('Error sending booking completion email:', emailError);
+    // Continue with the response even if email fails
+  }
 
   res.status(200).json({
     message: "Booking marked as completed successfully",

@@ -198,40 +198,7 @@ const SignUpForm = () => {
               )}
             </div>
 
-            <div>
-              <label
-                htmlFor="serviceType"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Service Type
-              </label>
-              <select
-                id="serviceType"
-                name="serviceType"
-                value={formData.serviceType || ""}
-                onChange={handleChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none transition-colors
-                          ${
-                            errors.serviceType
-                              ? "border-red-500 focus:ring-red-200"
-                              : "border-gray-300 focus:ring-purple-200 focus:border-purple-400"
-                          }`}
-              >
-                <option value="">Select service type</option>
-                <option value="Venue">Venue</option>
-                <option value="Catering">Catering</option>
-                <option value="Photography">Photography</option>
-                <option value="Decoration">Decoration</option>
-                <option value="Music">Music & Entertainment</option>
-                <option value="Transportation">Transportation</option>
-                <option value="Other">Other</option>
-              </select>
-              {errors.serviceType && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.serviceType}
-                </p>
-              )}
-            </div>
+
 
             <div>
               <label

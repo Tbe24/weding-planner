@@ -42,8 +42,14 @@ const formatDate = (dateString) => {
 };
 
 const StatusChip = ({ status }) => {
-  const getStatusColor = (status) => {
-    switch (status) {
+  // Handle undefined or null status
+  const safeStatus = status || "PENDING";
+
+  const getStatusColor = (statusValue) => {
+    // Ensure status is a string
+    const statusStr = String(statusValue);
+
+    switch (statusStr) {
       case "CONFIRMED":
         return "success";
       case "PENDING":
@@ -55,14 +61,27 @@ const StatusChip = ({ status }) => {
     }
   };
 
-  return <Chip label={status} color={getStatusColor(status)} size="small" />;
+  return <Chip label={safeStatus} color={getStatusColor(safeStatus)} size="small" />;
 };
 
 const PackageChip = ({ category }) => {
+  // Handle undefined, null, or non-string category
   if (!category) return null;
 
-  const getPackageColor = (category) => {
-    const type = category.toLowerCase();
+  // Handle object type categories (convert to string or extract name property)
+  let categoryStr;
+  if (typeof category === 'object') {
+    // If it's an object, try to get the name property or convert to a simple string
+    categoryStr = category.name || category.type || 'Other';
+  } else {
+    // Otherwise convert to string
+    categoryStr = String(category);
+  }
+
+  const getPackageColor = (categoryText) => {
+    // Ensure we're working with a string and convert to lowercase
+    const type = String(categoryText).toLowerCase();
+
     switch (type) {
       case "platinum":
         return "#1a237e"; // Dark blue
@@ -81,11 +100,11 @@ const PackageChip = ({ category }) => {
   return (
     <Typography
       style={{
-        color: getPackageColor(category),
+        color: getPackageColor(categoryStr),
         fontWeight: "bold",
       }}
     >
-      {category.charAt(0).toUpperCase() + category.slice(1)}
+      {categoryStr.charAt(0).toUpperCase() + categoryStr.slice(1)}
     </Typography>
   );
 };
@@ -188,6 +207,23 @@ const MyBookingsList = () => {
                 </Select>
               </FormControl>
             </Grid>
+
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="limit-label">Items per page</InputLabel>
+                <Select
+                  labelId="limit-label"
+                  value={pagination.limit}
+                  label="Items per page"
+                  onChange={handleLimitChange}
+                >
+                  <MenuItem value={5}>5</MenuItem>
+                  <MenuItem value={10}>10</MenuItem>
+                  <MenuItem value={25}>25</MenuItem>
+                  <MenuItem value={50}>50</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
           </Grid>
         </Box>
       )}
@@ -203,48 +239,57 @@ const MyBookingsList = () => {
               <TableCell>Location</TableCell>
               <TableCell>Price</TableCell>
               <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {bookings.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center">
+                <TableCell colSpan={7} align="center">
                   <Typography variant="body1" color="textSecondary" p={3}>
                     No bookings found
                   </Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              bookings.map((booking) => (
-                <TableRow key={booking.id}>
-                  <TableCell>{booking.service.name}</TableCell>
-                  <TableCell>{booking.vendor.businessName}</TableCell>
-                  <TableCell>
-                    <PackageChip category={booking.service.category} />
-                  </TableCell>
-                  <TableCell>{formatDate(booking.eventDate)}</TableCell>
-                  <TableCell>{booking.location}</TableCell>
-                  <TableCell>
-                    ETB {booking.service.price.toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    <StatusChip status={booking.status} />
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      color="primary"
-                      variant="outlined"
-                      size="small"
-                      onClick={() => {
-                        /* View details */
-                      }}
-                    >
-                      View Details
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
+              bookings.map((booking) => {
+                // Create a safe booking object with default values for missing properties
+                const safeBooking = {
+                  id: booking?.id || 'unknown',
+                  service: {
+                    name: booking?.service?.name || 'Unknown Service',
+                    // Handle category that might be an object or string
+                    category: booking?.service?.category || 'Other',
+                    price: booking?.service?.price || 0
+                  },
+                  vendor: {
+                    businessName: booking?.vendor?.businessName || 'Unknown Vendor'
+                  },
+                  eventDate: booking?.eventDate,
+                  location: booking?.location || 'Not specified',
+                  status: booking?.status || 'PENDING'
+                };
+
+                // Log the booking data for debugging
+                console.log('Booking data:', booking);
+
+                return (
+                  <TableRow key={safeBooking.id}>
+                    <TableCell>{safeBooking.service.name}</TableCell>
+                    <TableCell>{safeBooking.vendor.businessName}</TableCell>
+                    <TableCell>
+                      <PackageChip category={safeBooking.service.category} />
+                    </TableCell>
+                    <TableCell>{formatDate(safeBooking.eventDate)}</TableCell>
+                    <TableCell>{safeBooking.location}</TableCell>
+                    <TableCell>
+                      ETB {safeBooking.service.price.toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <StatusChip status={safeBooking.status} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

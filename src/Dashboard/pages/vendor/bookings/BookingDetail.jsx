@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -49,8 +49,28 @@ import { toast } from "react-toastify";
 import { format } from "date-fns";
 
 const BookingDetail = () => {
+  // Extract booking ID from URL parameters
   const { bookingId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+
+  // Extract ID from URL path if not available in params
+  const getBookingIdFromUrl = () => {
+    // If bookingId is already available from useParams, use it
+    if (bookingId) return bookingId;
+
+    // Otherwise extract from the URL path
+    const pathSegments = location.pathname.split('/');
+    // Find the ID in the URL (assuming format like /dashboard/bookings/{id}/show)
+    const idFromPath = pathSegments.find(segment =>
+      segment.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+    );
+
+    return idFromPath;
+  };
+
+  const currentBookingId = getBookingIdFromUrl();
+
   const {
     currentBooking,
     loading,
@@ -66,12 +86,18 @@ const BookingDetail = () => {
 
   // Fetch booking details on component mount
   useEffect(() => {
-    fetchBookingById(bookingId);
-  }, [fetchBookingById, bookingId]);
+    if (currentBookingId) {
+      console.log(`Fetching booking details for ID: ${currentBookingId}`);
+      fetchBookingById(currentBookingId);
+    } else {
+      console.error("No booking ID found in URL");
+      toast.error("No booking ID found in URL");
+    }
+  }, [fetchBookingById, currentBookingId]);
 
   const handleConfirm = async () => {
     try {
-      await confirmBooking(bookingId);
+      await confirmBooking(currentBookingId);
     } catch (err) {
       console.error("Error confirming booking:", err);
     }
@@ -85,7 +111,7 @@ const BookingDetail = () => {
     if (!cancellationReason.trim()) return;
 
     try {
-      await cancelBooking(bookingId, cancellationReason);
+      await cancelBooking(currentBookingId, cancellationReason);
       setCancelDialogOpen(false);
       setCancellationReason("");
     } catch (err) {
@@ -95,7 +121,7 @@ const BookingDetail = () => {
 
   const handleComplete = async () => {
     try {
-      await completeBooking(bookingId);
+      await completeBooking(currentBookingId);
     } catch (err) {
       console.error("Error completing booking:", err);
     }
@@ -149,7 +175,7 @@ const BookingDetail = () => {
         </Typography>
         <Button
           variant="contained"
-          onClick={() => fetchBookingById(bookingId)}
+          onClick={() => fetchBookingById(currentBookingId)}
           sx={{ mt: 2 }}
         >
           Try Again
@@ -165,7 +191,7 @@ const BookingDetail = () => {
         <Button
           variant="contained"
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate("/bookings")}
+          onClick={() => navigate("/dashboard/bookings")}
           sx={{ mt: 2 }}
         >
           Back to Bookings
@@ -180,7 +206,7 @@ const BookingDetail = () => {
         <Button
           variant="outlined"
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate("/bookings")}
+          onClick={() => navigate("/dashboard/bookings")}
           sx={{ mr: 2 }}
         >
           Back
@@ -360,7 +386,7 @@ const BookingDetail = () => {
                   </Typography>
                   <Paper
                     variant="outlined"
-                    sx={{ p: 2, backgroundColor: "grey.50" }}
+                    sx={{ p: 2}}
                   >
                     <Typography variant="body1" whiteSpace="pre-line">
                       {currentBooking.specialRequests}
